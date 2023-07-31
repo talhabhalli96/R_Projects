@@ -1,0 +1,315 @@
+---
+title: "Google Capstone Cyclistic Case"
+author: "Talha Saleem"
+date: "2023-03-17"
+output: html_document
+---
+##Statement Of Purpose
+We have to answer the following question.
+*How do annual members and casual riders use Cyclistic bikes differently?*
+To answer that question we will look at data from last 12 months and explore connections between variables and provide a detailed analysis of dataset and also recommendation aimed at helping in advertisement campaign.
+
+
+### Downloading and Storing Data
+* Data can be downloaded using following link.
+<https://divvy-tripdata.s3.amazonaws.com/index.html>
+
+* Data is organized in monthly datasets, so we need to download data from last 12 months.
+Note: Data is from March 2022 to February 2023
+
+* Data is unbiased and credible and it does ROCCC.
+Reliable          Yes
+Original          Yes
+Comprehensive     Yes
+Current           Yes
+Cited             Yes
+
+* Data in all datasets is organized in same format (all datasets contain same 13 columns with same names)
+
+
+
+### Loading Packages
+```{r}
+library(tidyverse)
+library(here)
+library(skimr)
+library(janitor)
+```
+
+
+### Loading Datasets
+Note: We have montly datasets from cyclistic company, so first we need to load them and then merge them.
+
+```{r echo=TRUE}
+march_2022 <- read_csv("D:/da/google/project/case study 1/202203-divvy-tripdata.csv")
+april_2022 <- read_csv("D:/da/google/project/case study 1/202204-divvy-tripdata.csv")
+may_2022 <- read_csv("D:/da/google/project/case study 1/202205-divvy-tripdata.csv")
+june_2022 <- read_csv("D:/da/google/project/case study 1/202206-divvy-tripdata.csv")
+july_2022 <- read_csv("D:/da/google/project/case study 1/202207-divvy-tripdata.csv")
+August_2022 <- read_csv("D:/da/google/project/case study 1/202208-divvy-tripdata.csv")
+sep_2022 <- read_csv("D:/da/google/project/case study 1/202209-divvy-publictripdata.csv")
+oct_2022 <- read_csv("D:/da/google/project/case study 1/202210-divvy-tripdata.csv")
+nov_2022 <- read_csv("D:/da/google/project/case study 1/202211-divvy-tripdata.csv")
+dec_2022 <- read_csv("D:/da/google/project/case study 1/202212-divvy-tripdata.csv")
+jan_2023 <- read_csv("D:/da/google/project/case study 1/202301-divvy-tripdata.csv")
+feb_2023 <- read_csv("D:/da/google/project/case study 1/202302-divvy-tripdata.csv")
+```
+
+### Merging Datasets
+Note: We will use rbind function for merging datasets.
+
+```{r}
+cyclist_merged <- rbind(march_2022,april_2022,may_2022,june_2022,july_2022,August_2022,sep_2022,oct_2022,nov_2022,dec_2022,jan_2023,feb_2023)
+```
+
+### Viewing Data
+* Structure of Dataset
+```{r}
+str(cyclist_merged)
+```
+
+* Viewing First 6 Rows
+```{r}
+head(cyclist_merged)
+```
+## Cleaning Data
+
+### Checking & Removing Nulls
+* Checking Nulls
+```{r}
+sum(is.na(cyclist_merged))
+```
+
+* As Dataset contains null values, we will now *remove* them.
+```{r}
+cyclist_merged <- na.omit(cyclist_merged)
+```
+
+### Checking and Removing Duplicates
+* Checking Duplicates
+```{r}
+sum(duplicated(cyclist_merged$ride_id))
+```
+
+Note: As dataset does not contain any Duplicates, we do not need to remove them.
+
+### Adding some extra variables
+Note: We need to add some extra varaibles for  better analysis of dataset
+
+#### Trip Duration Variable
+* First we create ride_length variable, we fill format that data in mins
+```{r}
+ride_length <- difftime(cyclist_merged$ended_at, cyclist_merged$started_at, units = 'mins')
+```
+
+* Now we add this variable in dataset
+```{r}
+cyclist_merged <- mutate(cyclist_merged, trip_duration = ride_length)
+```
+
+*Note: Same steps will be followed for other variables*
+
+#### Start Ride Hour
+```{r}
+started_at_hour <- hour(cyclist_merged$started_at)
+cyclist_merged <- mutate(cyclist_merged, ride_hour = started_at_hour)
+```
+
+#### Day Of Ride
+```{r}
+started_at_day <- wday(cyclist_merged$started_at, TRUE)
+cyclist_merged <- mutate(cyclist_merged, ride_day = started_at_day)
+```
+
+#### Month of Ride
+```{r}
+Start_at_month <- months.Date(cyclist_merged$started_at)
+cyclist_merged <- mutate(cyclist_merged, ride_month = Start_at_month)
+```
+
+
+### Changing Name of Dataset
+Note: We will change the name to cyclistic_clean_data for accessbility purposes
+```{r}
+cyclistic_clean_data <- cyclist_merged
+```
+
+* Checking data
+```{r}
+head(cyclistic_clean_data)
+```
+
+
+*Now data is clean and we can move to analysis phase*
+
+### Quick statistics
+*Checking Summary*
+```{r}
+summary(cyclistic_clean_data)
+```
+
+## Analysis
+
+
+### Compare Member vs Casuals
+
+```{r}
+cyclistic_clean_data %>% group_by(member_casual) %>% summarise(n=n()) %>% mutate(percent =n*100/sum(n))
+```
+
+
+```{r}
+ggplot(cyclistic_clean_data) + geom_bar(aes(x=member_casual, fill=member_casual)) + labs(title = 'Member Vs Casuals', x= "Type of Users", y= "Number of Users")
+```
+
+*As we can see that over 60% rides were taken by members, while others were casuals.
+
+
+### Ride Duration Analysis
+```{r}
+cat('Average duration of Ride is:', mean(cyclistic_clean_data$trip_duration), "mins")
+
+```
+```{r}
+cat('Maximun duration of Ride is:',round(max(cyclistic_clean_data$trip_duration)/60/24), "days")
+```
+
+#### Ride Duration Comparison
+```{r}
+bar <- cyclistic_clean_data %>% group_by(member_casual) %>% summarise(avg_ride_duration = mean(trip_duration))
+bar
+```
+```{r}
+ggplot(bar) + geom_col(aes(x=member_casual, y= avg_ride_duration, fill = member_casual)) + labs(title = 'Average Ride duration', subtitle = 'Member vs Casual', x='User Type', y='Avg Ride Duration') + scale_fill_manual(values = c('green','pink'))
+```
+*Average trip duration is around 16 mins.
+*By conducting further analysis we come to know that members in average take smaller trips(12mins) while casual customers take longer trips(23.5mins).
+
+
+### Number Of Rides by Month
+```{r}
+cyclistic_clean_data %>% group_by(ride_month) %>% summarise(n=n()) %>% mutate(percent = n*100/sum(n)) %>% arrange(ride_month)
+```
+
+Note: Months are not in chronological order.
+*Rides in winter decrease to its lowest levels and rise is seen with arrival of spring and summer sees peak userage.
+
+
+### Number Of Rides by Weekday
+```{r}
+cyclistic_clean_data %>% group_by(ride_day) %>% summarise(n=n()) %>% mutate(percent = n*100/sum(n))
+```
+
+```{r}
+ggplot(cyclistic_clean_data) + geom_bar(aes(x=ride_day, fill= ride_day)) + labs(title = 'Number of Rides Per Weekday', x='Weekday', y='Number Of Rides')
+```
+
+*Rides remain steady through out week, an increase is observed on Saturday(due to weekend).
+
+#### Comparing Members And Casuals With Respect to Weekday rides
+
+##### Members
+```{r}
+cyclistic_clean_data %>% group_by(ride_day) %>%  filter(member_casual=='member') %>% summarise(n=n()) %>% mutate(percent = n*100/sum(n))
+```
+
+##### Casuals
+```{r}
+cyclistic_clean_data %>% group_by(ride_day) %>%  filter(member_casual=='casual') %>% summarise(n=n()) %>% mutate(percent = n*100/sum(n))
+```
+
+##### Plot
+```{r}
+ggplot(cyclistic_clean_data) + geom_bar(aes(x=ride_day, fill= ride_day)) + labs(title = 'Number of Rides Per Weekday',subtitle = 'Member vs Casual', x='Weekday', y='Number Of Rides') + facet_wrap(~member_casual)
+```
+
+*Members take most of the rides on office days, usage is down on weekend.
+*Casual customers usage is spiked on weekends and on office days it remain steady.
+
+
+#### Type of Bikes
+```{r}
+cyclistic_clean_data %>% group_by(rideable_type) %>% summarise(n=n()) %>% mutate(percent =n*100/sum(n))
+```
+```{r}
+ggplot(cyclistic_clean_data) + geom_bar(aes(x=rideable_type, fill = rideable_type)) + labs(title = 'Types of Bikes Share in Trips', x='Type Of Bike', y= "Number of Trips")
+```
+
+*Majority of customers prefer classic bikes, electric bikes come second, while docked bike constitutes around 3% share.
+
+##### Ride type (Member vs Casual)
+```{r}
+ggplot(cyclistic_clean_data) + geom_bar(aes(x=rideable_type, fill = rideable_type)) + labs(title = 'Types of Bikes Share in Trips',subtitle = 'Casual Vs Member', x='Type Of Bike', y= "Number of Trips") + facet_wrap(~member_casual)
+```
+
+*Trends are almost same in respective categories of customers while market share do change. Docked bikes are not used by members at all.
+
+
+*For Further Analysis and visualization we will continue in Tableau*
+
+#### Montly Ridership And Avg Trip Duration
+
+![Data from march 2022 to feb 2023](C:\Users\tsale\Pictures\Screenshots\Screenshot 2023-03-18 214003.png)
+
+* As discussed above ridership is at peak in summer and decreases in winter
+
+#### Weekday data
+
+![Above Data Split by Customer type and in weekday](C:\Users\tsale\Pictures\Screenshots\Screenshot 2023-03-18 215021.png)
+
+* It can be clearly seem Average trip duration of casual riders is more than members.
+* Casual riders usually tend to travel on weekends especially saturday while members mostly travel on workdays which means that they are formal workers.
+
+#### Daily Ridership and TripDuration Data
+
+![Ridership and Trip duration Data with Respect to Hours](C:\Users\tsale\Pictures\Screenshots\Screenshot 2023-03-18 215715.png)
+
+* Most of the casual riders ride after noon until night.
+
+
+### Stations Data (Top 10)
+
+#### Start Station & End station
+
+![start station data](C:\Users\tsale\Pictures\Screenshots\Screenshot 2023-03-18 220218.png)
+
+![end station Data](C:\Users\tsale\Pictures\Screenshots\Screenshot 2023-03-18 220533.png)
+
+* Top Start and End stations are almost same.
+
+#### Start Station and End Station By Customer type
+
+![Start Station- Member&Casual](C:\Users\tsale\Pictures\Screenshots\Screenshot 2023-03-18 221059.png)
+
+![End Station- Member&Casual](C:\Users\tsale\Pictures\Screenshots\Screenshot 2023-03-18 221259.png)
+
+*  Streeter Dr & Grand Avenue is mos popular station due to large number of casual users starting and ending rides at this station
+
+
+### Recommendations
+
+1- Provide bikes to casual users on Weekend on a premium and offer membership at a discounted price.
+
+2- Begin advertisement campaign on top 5 popular stations for casuals on weekend especially Saturday.
+
+3- Begin this campaign at start of summer when user base is large.
+
+Note: Above data visualizations can be seen at following link
+<https://public.tableau.com/views/Google-capstonecyclist/Sheet1?:language=en-US&:display_count=n&:origin=viz_share_link>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
